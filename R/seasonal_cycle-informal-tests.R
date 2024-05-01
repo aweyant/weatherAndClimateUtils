@@ -17,10 +17,12 @@
 #
 # temp_out <- seasonal_cycle(df = test_df,
 #                            .cols = c("tmax", "tmin"),
-#                            quantile = c(0.05,0.5,0.95),
+#                            method = "harmonic_ols_regression",
+#                            #quantile = c(0.05,0.5,0.95),
 #                            n_harmonics = 4)
 #
 # ggplot(temp_out %>%
+#          #select(date, starts_with("tmax")) %>%
 #          pivot_longer(-date, values_to = "measurement", names_to = "var"),
 #        aes(x = date,
 #            y = measurement,
@@ -28,6 +30,14 @@
 #            linetype = var,
 #            color = var)) +
 #   geom_path() +
-#   scale_color_manual(values = c("red", "blue", "red", "black")) +
-#   scale_shape_manual(values = c(1, 1, 1, 19)) +
-#   scale_linetype_manual(values = c(3, 4, 3, 1))
+#   scale_color_manual(values = c("red", "red", "blue", "blue")) +
+#   scale_shape_manual(values = c(1, 1, 1, 1)) +
+#   scale_linetype_manual(values = c(3, 1, 3, 1))
+#
+# temp_out <- seasonal_cycle(df = test_df,
+#                            .cols = c("tmax", "tmin"),
+#                            method = "harmonic_quantile_regression",
+#                            quantile = c(0.05, 0.5, 0.95),
+#                            n_harmonics = 4)
+#
+#

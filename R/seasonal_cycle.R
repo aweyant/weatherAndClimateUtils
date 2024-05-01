@@ -26,8 +26,11 @@ seasonal_cycle <- function(df,
     {
       if(method == "harmonic_quantile_regression") {
         harmonic_quantile_regression(., ...)
-        }
       }
+      else if(method == "harmonic_ols_regression") {
+        harmonic_ols_regression(., ...)
+      }
+    }
 }
 
 
@@ -76,24 +79,25 @@ harmonic_quantile_regression <- function(df, quantile = 0.5, n_harmonics = 2) {
     dplyr::select(date, dplyr::everything())
 }
 
-append_harmonics <- function(df, n_harmonics) {
+harmonic_ols_regression <- function(df, n_harmonics = 2) {
   df %>%
-    dplyr::mutate(data.frame(sapply(X = paste0("harmonic_s", seq_len(n_harmonics)),
-                                    FUN = function(name) {
-                                      sin(lycday*
-                                            2*pi*
-                                            as.numeric(gsub("harmonic_s","",name))/annual_period_in_days
-                                      )
-                                    },
-                                    simplify = FALSE, USE.NAMES = TRUE)),
-                  data.frame(sapply(X = paste0("harmonic_c", seq_len(n_harmonics)),
-                                    FUN = function(name) {
-                                      cos(lycday*
-                                            2*pi*
-                                            as.numeric(gsub("harmonic_c","",name))/annual_period_in_days
-                                      )
-                                    },
-                                    simplify = FALSE, USE.NAMES = TRUE)))
+    append_harmonics(n_harmonics = n_harmonics) %>%
+    tidyr::pivot_longer(cols = !c("date", "lycday") & !dplyr::starts_with("harmonic"),
+                        names_to = "name",
+                        values_to = "value") %>%
+    dplyr::group_by(name) %>%
+    dplyr::group_map(function(data, group_info) {
+      data.frame(data,
+                 group_info$name,
+                 harmonic_ols_regression_core(data,
+                                              group_info$name)) %>%
+        dplyr::select(-c("group_info.name", "date", "value")) %>%
+        dplyr::select(-lycday) %>%
+        dplyr::select(-dplyr::starts_with("harmonic"))}) %>%
+    dplyr::bind_cols() %>%
+    dplyr::ungroup() %>%
+    dplyr::mutate(date = df$date) %>%
+    dplyr::select(date, dplyr::everything())
 }
 
 
@@ -127,6 +131,55 @@ harmonic_quantile_regression_core <- function(df, quantile, variable_name) {
                     dplyr::select("value") %>%
                     dplyr::rename(!!dplyr::quo_name(variable_name) := "value")) %>%
     dplyr::select({{variable_name}}, dplyr::everything())
+}
+
+harmonic_ols_regression_core <- function(df, variable_name) {
+  stats::lm(data = df %>%
+              dplyr::rename(!!dplyr::quo_name(variable_name) := "value"),
+            formula = stats::as.formula(paste0(variable_name,
+                                               " ~ ",
+                                               paste(names(dplyr::select(.data = df,
+                                                                         dplyr::starts_with("harmonic"))),
+                                                     collapse = " + "))))$fitted.values %>%
+    data.frame() %>%
+    dplyr::rename_with(.fn = \(x) {
+      gsub(pattern = "\\.",
+           replacement = paste0(variable_name, "_conditional_mean")[[1]],
+           x = x)}) %>%
+    # dplyr::rename_with(.fn = \(x) {
+    #   gsub(pattern = "\\.",
+    #        replacement = paste0(variable_name, "_", 100*quantile, "_ptile")[[1]],
+    #        x = x)}) %>%
+    # dplyr::rename_with(.fn = \(x) {
+    #   paste0(variable_name, "_",
+    #          100 * quantile[as.numeric(gsub(pattern = "X",
+    #                                         replacement = "",
+    #                                         x = x))],
+    #          "_ptile")}) %>%
+    dplyr::mutate(df %>%
+                    dplyr::select("value") %>%
+                    dplyr::rename(!!dplyr::quo_name(variable_name) := "value")) %>%
+    dplyr::select({{variable_name}}, dplyr::everything())
+}
+
+append_harmonics <- function(df, n_harmonics) {
+  df %>%
+    dplyr::mutate(data.frame(sapply(X = paste0("harmonic_s", seq_len(n_harmonics)),
+                                    FUN = function(name) {
+                                      sin(lycday*
+                                            2*pi*
+                                            as.numeric(gsub("harmonic_s","",name))/annual_period_in_days
+                                      )
+                                    },
+                                    simplify = FALSE, USE.NAMES = TRUE)),
+                  data.frame(sapply(X = paste0("harmonic_c", seq_len(n_harmonics)),
+                                    FUN = function(name) {
+                                      cos(lycday*
+                                            2*pi*
+                                            as.numeric(gsub("harmonic_c","",name))/annual_period_in_days
+                                      )
+                                    },
+                                    simplify = FALSE, USE.NAMES = TRUE)))
 }
 
 lycday <- function(date) {
