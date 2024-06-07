@@ -1,6 +1,35 @@
+#' Download station observations from Synoptic Data PBC
+#'
+#' With a basic, free account, anybody can download up to a year of station
+#' observations from Synoptic.
+#'
+#' @name synoptic
+NULL
+
+#' @rdname synoptic
+#' @param dest_dir string, the directory to download to
+#' @param api_key string, API Token obtained from Synoptic Data PBC. A free
+#' account is required. See https://docs.synopticdata.com/account/public-api-tokens
+#' for more information
+#' @param ids vector of strings, the IDs of the stations from which you want to
+#' download observations
+#' @param start,end strings, the boundaries of the time interval over which you
+#' wish to fetch observations formatted as "yyyymmddhhmm". The timezone is
+#' universal coordinated time (UTC), so be sure to consider offset from your
+#' local time
+#' @param recent numeric, integer specifically; Instead of providing an interval,
+#' you can specify the "recent", the number of minutes you wish to count back from
+#' the present moments. Set recent=120 to download the most recent two hours of
+#' obs.
+#'
+#' @return NULL; the function is called for its side-effect
+#'
+#' @examples
+#' get_data_synoptic(dest_dir = "~/Downloads", ids = c("KSAN", "G3667"), start = "202308080000", end = "202308090000")
+#'
+#' @export
 get_data_synoptic <- function(dest_dir,
                               api_key = NULL,
-                              station_selection_str = NULL,
                               ids, # stid; vector of strings for station IDs
                               #states, # state; vector of strings with 2 digit state abbrvs
                               #countries, # country;
@@ -18,27 +47,28 @@ get_data_synoptic <- function(dest_dir,
                               end = NULL,
                               recent = NULL) {
   if(is.null(api_key)) {
-    # INTERACTIVE QUERY TO OBTAIN API KEY
-    # API KEY SET TO RESULT
+    get_api_key_synoptic()
+    api_key <- api_key_env$api_key
   }
 
-  lapply(X = ids,
-         FUN = function(id) {
-           # PROBABLY GOOD TO WRAP IN A TRY/CATCH OR SOMETHING
-           api_call <- build_synoptic_api_call(api_key = api_key,
-                                               ids = id,
-                                               start = start,
-                                               end = end,
-                                               recent = recent)
-           # print(api_call)
-           download.file(url = api_call,
-                         destfile = file.path(dest_dir,
-                                              paste0(c(Sys.Date(),
-                                                       id),
-                                                     collapse = "_")))
-         })
+  for(id in ids) {
+    api_call <- build_synoptic_api_call(api_key = api_key,
+                                        ids = id,
+                                        start = start,
+                                        end = end,
+                                        recent = recent)
+    # print(api_call)
+    # print(file.path(dest_dir,
+    #                 paste0(Sys.Date(),"_",id)))
+    #return(NULL)
+    utils::download.file(url = api_call,
+                  destfile = file.path(dest_dir,
+                                       paste0(Sys.Date(),"_",id)))
+  }
 }
 
+#' @rdname synoptic
+#' @export
 build_synoptic_api_call <- function(api_key = NULL,
                                     #station_selection_str = NULL,
                                     ids, # stid; vector of strings for station IDs
@@ -61,7 +91,7 @@ build_synoptic_api_call <- function(api_key = NULL,
   api_key_str = paste0("token=", api_key)
   time_str=ifelse(!is.null(recent),
                   paste0("recent=", recent),
-                  paste0("start=", start, "end=", end))
+                  paste0("start=", start, "&end=", end))
   station_selection_str=paste0("stid=", paste0(ids, collapse = ","))
   return(paste0(c(basic_timeseries_stub_str,
                   api_key_str,
@@ -71,14 +101,53 @@ build_synoptic_api_call <- function(api_key = NULL,
                   "output=csv"), collapse = "&"))
 }
 
-get_station_ids_synoptic <- function() {
+api_key_env <- new.env(parent = emptyenv())
 
-}
-
+#' @rdname synoptic
+#' @export
 get_api_key_synoptic <- function() {
+  user_data_dir <- rappdirs::user_data_dir(appname = "weatherAndClimateUtils")
+  if(!is.null(api_key_env$api_key) && exists(api_key_env$api_key)) {
+    return(api_key_env$api_key)
+  }
+  else if(file.exists(file.path(user_data_dir, "api_key.Rds"))){
+    api_key_env$api_key <- readRDS(file.path(user_data_dir, "api_key.Rds"))
+    return(api_key_env$api_key)
+  }
+  else{
+    print("You must set your Synoptic API token with set_api_key_synoptic().")
+    return(NULL)
+  }}
 
-}
-
-set_api_key_synoptic <- function() {
-
+#' @rdname synoptic
+#' @param given_api_key string of the API token associated with your
+#' synoptic account
+#' @param force logical; if TRUE, the user consents to writing the key to a file
+#' which persists between R sessions; if FALSE, the user is asked for consent to
+#' write.
+#' @export
+set_api_key_synoptic <- function(given_api_key, force = FALSE) {
+  user_data_dir <- rappdirs::user_data_dir(appname = "weatherAndClimateUtils")
+  api_key_env$api_key <- given_api_key
+  if(!force && interactive()){
+    result <- select.list(c("Yes", "No"),
+                          title = "API token set. Would you like this to persist between sessions?")
+    if(result == "Yes"){
+      if(!dir.exists(user_data_dir)) {
+        print(paste0("Creating ", user_data_dir))
+        dir.create(file.path(user_data_dir))
+      }
+      saveRDS(object = api_key_env$api_key,
+              file = file.path(user_data_dir,"api_key.Rds"))
+    }
+  } else if(force){
+    if(!dir.exists(user_data_dir)) {
+      print(paste0("Creating ", user_data_dir))
+      dir.create(file.path(user_data_dir))
+    }
+    saveRDS(object = api_key_env$api_key,
+            file = file.path(user_data_dir,"api_key.Rds"))
+  } else {
+    warning("The API token will be forgotten when this R session is terminated.")
+  }
 }

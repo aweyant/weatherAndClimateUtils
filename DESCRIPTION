@@ -21,4 +21,5 @@ Imports:
     quantreg,
     rlang,
     stringr,
-    tidyr
+    tidyr,
+    utils
