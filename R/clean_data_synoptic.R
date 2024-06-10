@@ -26,10 +26,12 @@ load_data_synoptic <- function(raw_synoptic_file) {
   }
   process_header_synoptic(raw_synoptic_file) %>%
     dplyr::left_join(readr::read_csv(raw_synoptic_file, skip = 8,
-                                     col_names = names(readr::read_csv(raw_synoptic_file, comment = "#", n_max = 0))) %>%
-                       dplyr::group_by(Station_ID) %>%
-                       tidyr::nest(.key = "obs"),
-                     by = "Station_ID")
+                                     col_names = names(readr::read_csv(raw_synoptic_file, comment = "#", n_max = 0))),
+                     by = "Station_ID") %>%
+    clean_data_synoptic() %>%
+    dplyr::group_by(across(all_of(c("Station_ID", "LATITUDE", "LONGITUDE", "ELEVATION [ft]",
+                                    "STATE", "local_timezone")))) %>%
+    tidyr::nest(.key = "obs")
 }
 
 #' @rdname clean_synoptic
@@ -45,12 +47,22 @@ process_header_synoptic <- function(raw_synoptic_file) {
     janitor::row_to_names(1) %>%
     dplyr:::mutate(dplyr::across(.cols = c("LATITUDE", "LONGITUDE", "ELEVATION [ft]"),
                                  .fns = as.numeric)) %>%
+    dplyr::mutate(local_timezone = lutz::tz_lookup_coords(lat = .data$LATITUDE,
+                                                          lon = .data$LONGITUDE,
+                                                          method = "fast",
+                                                          warn = FALSE)) %>%
     dplyr::rename("Station_ID" = "STATION")
 }
 
 clean_data_synoptic <- function(raw_synoptic_df) {
-
+  print(raw_synoptic_df$Date_Time[1])
+  print(raw_synoptic_df$local_timezone[1])
+  raw_synoptic_df %>%
+    dplyr::mutate(Date_Time_Local = lubridate::with_tz(time = .data$Date_Time,
+                                                       tzone = .data$local_timezone[1]))
 }
+
+
 
 
 

@@ -63,7 +63,7 @@ harmonic_quantile_regression <- function(df, quantile = 0.5, n_harmonics = 2) {
     tidyr::pivot_longer(cols = !c("date", "lycday") & !dplyr::starts_with("harmonic"),
                         names_to = "name",
                         values_to = "value") %>%
-    dplyr::group_by(name) %>%
+    dplyr::group_by(.data$name) %>%
     dplyr::group_map(function(data, group_info) {
       data.frame(data,
                  group_info$name,

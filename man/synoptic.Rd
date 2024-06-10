@@ -85,6 +85,6 @@ start = "202308080000", end = "202308090000")
 
 get_clean_and_save_data_synoptic(dest_dir_raw_data = file.path("~", "Downloads"),
 dest_file_processed_data = file.path("~","data","weather_today.Rda"),
-ids = c("KSAN", "G3667", "G4424"),
+ids = c("KSAN", "G3667", "G4747"),
 recent = 120)
 }
