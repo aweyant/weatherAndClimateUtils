@@ -6,6 +6,7 @@
 \alias{build_synoptic_api_call}
 \alias{get_api_key_synoptic}
 \alias{set_api_key_synoptic}
+\alias{get_clean_and_save_data_synoptic}
 \title{Download station observations from Synoptic Data PBC}
 \usage{
 get_data_synoptic(
@@ -28,6 +29,16 @@ build_synoptic_api_call(
 get_api_key_synoptic()
 
 set_api_key_synoptic(given_api_key, force = FALSE)
+
+get_clean_and_save_data_synoptic(
+  dest_dir_raw_data,
+  dest_file_processed_data = NULL,
+  api_key = NULL,
+  ids,
+  start = NULL,
+  end = NULL,
+  recent = NULL
+)
 }
 \arguments{
 \item{dest_dir}{string, the directory to download to}
@@ -55,6 +66,11 @@ synoptic account}
 \item{force}{logical; if TRUE, the user consents to writing the key to a file
 which persists between R sessions; if FALSE, the user is asked for consent to
 write.}
+
+\item{dest_dir_raw_data}{same as dest_dir in get_data_synoptic}
+
+\item{dest_file_processed_data}{string; the desired name of the standardized
+synoptic tibble, including its file path}
 }
 \value{
 NULL; the function is called for its side-effect
@@ -64,6 +80,11 @@ With a basic, free account, anybody can download up to a year of station
 observations from Synoptic.
 }
 \examples{
-get_data_synoptic(dest_dir = "~/Downloads", ids = c("KSAN", "G3667"), start = "202308080000", end = "202308090000")
+get_data_synoptic(dest_dir = "~/Downloads", ids = c("KSAN", "G3667"),
+start = "202308080000", end = "202308090000")
 
+get_clean_and_save_data_synoptic(dest_dir_raw_data = file.path("~", "Downloads"),
+dest_file_processed_data = file.path("~","data","weather_today.Rda"),
+ids = c("KSAN", "G3667", "G4424"),
+recent = 120)
 }

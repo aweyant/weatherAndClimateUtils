@@ -25,7 +25,8 @@ NULL
 #' @return NULL; the function is called for its side-effect
 #'
 #' @examples
-#' get_data_synoptic(dest_dir = "~/Downloads", ids = c("KSAN", "G3667"), start = "202308080000", end = "202308090000")
+#' get_data_synoptic(dest_dir = "~/Downloads", ids = c("KSAN", "G3667"),
+#' start = "202308080000", end = "202308090000")
 #'
 #' @export
 get_data_synoptic <- function(dest_dir,
@@ -57,13 +58,13 @@ get_data_synoptic <- function(dest_dir,
                                         start = start,
                                         end = end,
                                         recent = recent)
-    # print(api_call)
-    # print(file.path(dest_dir,
-    #                 paste0(Sys.Date(),"_",id)))
-    #return(NULL)
+    file_name = file.path(dest_dir,
+                          paste0(Sys.Date(),"_",id,".csv"))
     utils::download.file(url = api_call,
-                  destfile = file.path(dest_dir,
-                                       paste0(Sys.Date(),"_",id)))
+                  destfile = file_name)
+    if(readr::read_lines(file = file_name, n_max = 1) == "# NUMBER_OF_OBJECTS: 0") {
+      warning(paste0("Synoptic could note download data for station ", id))
+    }
   }
 }
 
@@ -130,8 +131,8 @@ set_api_key_synoptic <- function(given_api_key, force = FALSE) {
   user_data_dir <- rappdirs::user_data_dir(appname = "weatherAndClimateUtils")
   api_key_env$api_key <- given_api_key
   if(!force && interactive()){
-    result <- select.list(c("Yes", "No"),
-                          title = "API token set. Would you like this to persist between sessions?")
+    result <- utils::select.list(c("Yes", "No"),
+                                 title = "API token set. Would you like this to persist between sessions?")
     if(result == "Yes"){
       if(!dir.exists(user_data_dir)) {
         print(paste0("Creating ", user_data_dir))
@@ -150,4 +151,45 @@ set_api_key_synoptic <- function(given_api_key, force = FALSE) {
   } else {
     warning("The API token will be forgotten when this R session is terminated.")
   }
+}
+
+#' @rdname synoptic
+#' @param dest_file_processed_data string; the desired name of the standardized
+#' synoptic tibble, including its file path
+#' @param dest_dir_raw_data same as dest_dir in get_data_synoptic
+#'
+#' @examples
+#' get_clean_and_save_data_synoptic(dest_dir_raw_data = file.path("~", "Downloads"),
+#' dest_file_processed_data = file.path("~","data","weather_today.Rda"),
+#' ids = c("KSAN", "G3667", "G4747"),
+#' recent = 120)
+#' @export
+get_clean_and_save_data_synoptic <- function(dest_dir_raw_data,
+                                             dest_file_processed_data = NULL,
+                                             api_key = NULL,
+                                             ids,
+                                             start = NULL,
+                                             end = NULL,
+                                             recent = NULL) {
+  get_data_synoptic(dest_dir = dest_dir_raw_data,
+                    api_key = api_key,
+                    ids = ids,
+                    start = start,
+                    end = end,
+                    recent = recent)
+
+  raw_file_names = file.path(dest_dir_raw_data, paste0(Sys.Date(),"_",ids,".csv"))
+
+  lapply(X = raw_file_names,
+         FUN = function(raw_synoptic_file) {
+           load_data_synoptic(raw_synoptic_file)
+         }) %>%
+    dplyr::bind_rows() %>%
+    {if(!is.null(dest_file_processed_data)) {
+      readr::write_rds(x = .,
+                       file = dest_file_processed_data)}
+      else {
+        return(.)
+      }}
+
 }

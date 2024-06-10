@@ -16,9 +16,12 @@ LazyData: true
 Imports: 
     dplyr,
     glue,
+    janitor,
     lubridate,
     magrittr,
     quantreg,
+    rappdirs,
+    readr,
     rlang,
     stringr,
     tidyr,
