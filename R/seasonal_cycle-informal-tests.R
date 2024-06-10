@@ -1,7 +1,7 @@
 # test_df <- data.frame(date = seq.Date(from = ymd("1999-01-01"),
 #                                       to = ymd("2000-12-31"),
 #                                       by = 1)) %>%
-#   mutate(tmin = 12 +
+#   dplyr::mutate(tmin = 12 +
 #            8 * sin(-pi/2 + 2*pi*(yday(date) + 20)/365.25) +
 #            rnorm(n = n(),
 #                  mean = 0,

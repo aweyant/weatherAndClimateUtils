@@ -189,7 +189,7 @@ get_clean_and_save_data_synoptic <- function(dest_dir_raw_data,
       readr::write_rds(x = .,
                        file = dest_file_processed_data)}
       else {
-        return(.)
-      }}
+        .
+        }}
 
 }

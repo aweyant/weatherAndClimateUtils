@@ -40,8 +40,10 @@ process_header_synoptic <- function(raw_synoptic_file) {
   readr::read_delim(raw_synoptic_file,
                     n_max = 6,
                     delim = ":", col_names = FALSE) %>%
-    dplyr::mutate(dplyr::across(.fn = \(x) gsub(x = x, pattern = "#", replacement = ""))) %>%
-    dplyr::mutate(dplyr::across(.fn = \(x) stringr::str_trim(string = x, side = "both"))) %>%
+    dplyr::mutate(dplyr::across(.cols = everything(),
+                                .fn = \(x) gsub(x = x, pattern = "#", replacement = ""))) %>%
+    dplyr::mutate(dplyr::across(.cols = everything(),
+                                .fn = \(x) stringr::str_trim(string = x, side = "both"))) %>%
     t() %>%
     dplyr::as_tibble() %>%
     janitor::row_to_names(1) %>%
@@ -55,8 +57,8 @@ process_header_synoptic <- function(raw_synoptic_file) {
 }
 
 clean_data_synoptic <- function(raw_synoptic_df) {
-  print(raw_synoptic_df$Date_Time[1])
-  print(raw_synoptic_df$local_timezone[1])
+  #print(raw_synoptic_df$Date_Time[1])
+  #print(raw_synoptic_df$local_timezone[1])
   raw_synoptic_df %>%
     dplyr::mutate(Date_Time_Local = lubridate::with_tz(time = .data$Date_Time,
                                                        tzone = .data$local_timezone[1]))

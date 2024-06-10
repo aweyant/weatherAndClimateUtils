@@ -9,7 +9,10 @@ harmonic_quantile_regression(df, quantile = 0.5, n_harmonics = 2)
 \arguments{
 \item{df}{a data.frame() of daily weather observations, with the first column
 containing DATE or POSIXct objects and the remaining columns containing the
-weather obs (e.g. maximum temperature, precipitation)}
+weather obs (e.g. maximum temperature, precipitation).
+
+Remove all rows with NAs before calculating. I will fix bad behaviour on my
+end}
 
 \item{quantile}{quantiles for which we want a seasonal cycle; common ones
 include 0.05, 0.5 (the median), and 0.95}
