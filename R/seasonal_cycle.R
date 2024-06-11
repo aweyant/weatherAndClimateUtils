@@ -12,7 +12,8 @@
 #' @param method string of the particular method used to calculate seasonal cycles;
 #' currently, "harmonic_quantile_regression" and "harmonic_ols_regression" are
 #' supported
-#' @param ... extra arguments passed to the chosen method
+#' @param ... extra arguments passed to the chosen method; type
+#' ?harmonic_quantile_regression() or ?harmonic_ols_regression() for details
 #'
 #' @return a data.frame() with the date, the chosen variables, and their annual
 #' cycles
@@ -71,9 +72,17 @@ seasonal_cycle <- function(df,
 }
 
 
-#' Harmonic Quantile Regression method for calculating seasonal cycles
+#' Methods for calculating seasonal cycles
+#' @name seasonal_cycle_submethods
+NULL
+
+#' @details
+#' harmonic_ols_regression() calculates the mean conditioned on the time of year
+#' via the method of least squares. Note that departures from the mean are
+#' usually heteroskedastic over the year.
 #'
-#' This function calculates quantiles conditioned on the time of year.
+#' harmonic_quantile_regression() calculates quantiles conditioned on the time
+#' of year.
 #'
 #' For example, if you wanted to know the median of the daily maximum
 #' temperature on 30 June, you could take the median of all observed maximum
@@ -83,9 +92,8 @@ seasonal_cycle <- function(df,
 #' definition, periodic functions, we can instead regress on the time of year.
 #' We use the function quantreg::rq() for this purpose.
 #'
-#' This function should not be called directly. Instead, use seasonal_cycle()
-#' from this package.
-#'
+#' These functions should not be called directly. Instead, use their wrapper,
+#' seasonal_cycle().
 #' @inheritParams seasonal_cycle
 #' @param quantile quantiles for which we want a seasonal cycle; common ones
 #' include 0.05, 0.5 (the median), and 0.95
@@ -93,6 +101,9 @@ seasonal_cycle <- function(df,
 #' too coarse and six might be too noisy
 #'
 #' @return a data.frame() with the original variable and its quantiles
+#'
+#' @rdname seasonal_cycle_submethods
+#'
 #' @export
 harmonic_quantile_regression <- function(df, quantile = 0.5, n_harmonics = 2) {
   df %>%
@@ -102,9 +113,6 @@ harmonic_quantile_regression <- function(df, quantile = 0.5, n_harmonics = 2) {
                         values_to = "value") %>%
     dplyr::group_by(.data$name) %>%
     dplyr::group_map(function(data, group_info) {
-      #print(group_info$name)
-      # data.frame(data,
-      #            group_info$name)
       data.frame(data,
                  group_info$name,
                  harmonic_quantile_regression_core(data,
@@ -120,6 +128,8 @@ harmonic_quantile_regression <- function(df, quantile = 0.5, n_harmonics = 2) {
     dplyr::select(date, dplyr::everything())
 }
 
+#' @rdname seasonal_cycle_submethods
+#' @export
 harmonic_ols_regression <- function(df, n_harmonics = 2) {
   df %>%
     append_harmonics(n_harmonics = n_harmonics) %>%
@@ -158,16 +168,16 @@ harmonic_quantile_regression_core <- function(df, quantile, variable_name) {
                                                         collapse = " + "))),
                tau = quantile)$fitted.values %>%
     data.frame() %>%
-    dplyr::rename_with(.fn = \(x) {
-      gsub(pattern = "\\.",
-           replacement = paste0(variable_name, "_", 100*quantile, "_ptile")[[1]],
-           x = x)}) %>%
-    dplyr::rename_with(.fn = \(x) {
-      paste0(variable_name, "_",
-             100 * quantile[as.numeric(gsub(pattern = "X",
-                                            replacement = "",
-                                            x = x))],
-             "_ptile")}) %>%
+    {if(ncol(.) == 1) colnames(.) <- paste0(variable_name, "_", 100*quantile[1], "_ptile")
+    .} %>%
+    {if(ncol(.) > 1) dplyr::rename_with(.data = .,
+                                        .fn = \(x) {
+                                          paste0(variable_name, "_",
+                                                 100 * quantile[as.numeric(gsub(pattern = "X",
+                                                                                replacement = "",
+                                                                                x = x))],
+                                                 "_ptile")})
+      else .} %>%
     dplyr::mutate(df %>%
                     dplyr::select("value") %>%
                     dplyr::rename(!!dplyr::quo_name(variable_name) := "value")) %>%

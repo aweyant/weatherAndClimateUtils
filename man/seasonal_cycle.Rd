@@ -21,7 +21,8 @@ the seasonal cycle}
 currently, "harmonic_quantile_regression" and "harmonic_ols_regression" are
 supported}
 
-\item{...}{extra arguments passed to the chosen method}
+\item{...}{extra arguments passed to the chosen method; type
+?harmonic_quantile_regression() or ?harmonic_ols_regression() for details}
 }
 \value{
 a data.frame() with the date, the chosen variables, and their annual
