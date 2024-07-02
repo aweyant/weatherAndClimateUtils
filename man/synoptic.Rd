@@ -15,7 +15,8 @@ get_data_synoptic(
   ids,
   start = NULL,
   end = NULL,
-  recent = NULL
+  recent = NULL,
+  format = "csv"
 )
 
 build_synoptic_api_call(
@@ -23,7 +24,8 @@ build_synoptic_api_call(
   ids,
   start = NULL,
   end = NULL,
-  recent = NULL
+  recent = NULL,
+  format = "csv"
 )
 
 get_api_key_synoptic()
@@ -37,7 +39,8 @@ get_clean_and_save_data_synoptic(
   ids,
   start = NULL,
   end = NULL,
-  recent = NULL
+  recent = NULL,
+  format = "json"
 )
 }
 \arguments{
@@ -59,6 +62,9 @@ local time}
 you can specify the "recent", the number of minutes you wish to count back from
 the present moments. Set recent=120 to download the most recent two hours of
 obs.}
+
+\item{format}{string; file format for downloaded data. The valid options are
+"json" and "csv".}
 
 \item{given_api_key}{string of the API token associated with your
 synoptic account}

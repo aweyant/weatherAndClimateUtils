@@ -35,11 +35,11 @@ Calculate Seasonal Cycles from daily weather data
 test_df <- data.frame(date = seq.Date(from = lubridate::ymd("1999-01-01"),
 to = lubridate::ymd("2000-12-31"), by = 1)) \%>\%
   dplyr::mutate(tmin = 12 + 8 * sin(-pi/2 + 2*pi*(lubridate::yday(date) + 20)/365.25) +
-  stats::rnorm(n = n(),
+  stats::rnorm(n = dplyr::n(),
   mean = 0,
   sd = 1.5 * (1 - 0.6*sin(-pi/2 + 2*pi*lubridate::yday(date)/365.25))),
    tmax = pmax(tmin + 2, 22 + 6 * sin(-pi/2 + 2*pi*(lubridate::yday(date) + 20)/365.25) +
-   stats::rnorm(n = n(), mean = 0,
+   stats::rnorm(n = dplyr::n(), mean = 0,
    sd = 1 * (1 - 0.6*sin(-pi/2 + 2*pi*lubridate::yday(date)/365.25))))) \%>\%
    stats::na.omit()
 

@@ -46,25 +46,45 @@ get_data_synoptic <- function(dest_dir,
                               #bbox,
                               start = NULL,
                               end = NULL,
-                              recent = NULL) {
+                              recent = NULL,
+                              format = "csv") {
   if(is.null(api_key)) {
     get_api_key_synoptic()
     api_key <- api_key_env$api_key
   }
 
-  for(id in ids) {
+  if(format == "csv") {
+    for(id in ids) {
+      api_call <- build_synoptic_api_call(api_key = api_key,
+                                          ids = id,
+                                          start = start,
+                                          end = end,
+                                          recent = recent,
+                                          format = format)
+      file_name = file.path(dest_dir,
+                            paste0(Sys.Date(),"_",id,".csv"))
+      utils::download.file(url = api_call,
+                           destfile = file_name)
+      if(readr::read_lines(file = file_name, n_max = 1) == "# NUMBER_OF_OBJECTS: 0") {
+        warning(paste0("Synoptic could note download data for station ", id))
+      }
+    }
+  }
+  else if(format == "json") {
     api_call <- build_synoptic_api_call(api_key = api_key,
-                                        ids = id,
+                                        ids = ids,
                                         start = start,
                                         end = end,
-                                        recent = recent)
+                                        recent = recent,
+                                        format = format)
     file_name = file.path(dest_dir,
-                          paste0(Sys.Date(),"_",id,".csv"))
+                          paste0(Sys.Date(),"_",paste0(ids, collapse = "&"),".",format))
+    #print(api_call)
     utils::download.file(url = api_call,
-                  destfile = file_name)
-    if(readr::read_lines(file = file_name, n_max = 1) == "# NUMBER_OF_OBJECTS: 0") {
-      warning(paste0("Synoptic could note download data for station ", id))
-    }
+                         destfile = file_name)
+  }
+  else {
+    warning("Only \"csv\" and \"json\" are recognized formats")
   }
 }
 
@@ -87,9 +107,11 @@ build_synoptic_api_call <- function(api_key = NULL,
                                     #bbox,
                                     start = NULL,
                                     end = NULL,
-                                    recent = NULL) {
+                                    recent = NULL,
+                                    format = "csv") {
   basic_timeseries_stub_str = "https://api.synopticdata.com/v2/stations/timeseries?"
   api_key_str = paste0("token=", api_key)
+  format_str=paste0("output=",format)
   time_str=ifelse(!is.null(recent),
                   paste0("recent=", recent),
                   paste0("start=", start, "&end=", end))
@@ -99,7 +121,7 @@ build_synoptic_api_call <- function(api_key = NULL,
                   station_selection_str,
                   time_str,
                   "precip=1",
-                  "output=csv"), collapse = "&"))
+                  format_str), collapse = "&"))
 }
 
 api_key_env <- new.env(parent = emptyenv())
@@ -157,6 +179,8 @@ set_api_key_synoptic <- function(given_api_key, force = FALSE) {
 #' @param dest_file_processed_data string; the desired name of the standardized
 #' synoptic tibble, including its file path
 #' @param dest_dir_raw_data same as dest_dir in get_data_synoptic
+#' @param format string; file format for downloaded data. The valid options are
+#' "json" and "csv".
 #'
 #' @examples
 #' get_clean_and_save_data_synoptic(dest_dir_raw_data = file.path("~", "Downloads"),
@@ -170,26 +194,59 @@ get_clean_and_save_data_synoptic <- function(dest_dir_raw_data,
                                              ids,
                                              start = NULL,
                                              end = NULL,
-                                             recent = NULL) {
+                                             recent = NULL,
+                                             format = "json") {
   get_data_synoptic(dest_dir = dest_dir_raw_data,
                     api_key = api_key,
                     ids = ids,
                     start = start,
                     end = end,
-                    recent = recent)
+                    recent = recent,
+                    format = format)
 
-  raw_file_names = file.path(dest_dir_raw_data, paste0(Sys.Date(),"_",ids,".csv"))
+  if(format == "csv") {
+    raw_file_names = file.path(dest_dir_raw_data, paste0(Sys.Date(),"_",ids,".csv"))
 
-  lapply(X = raw_file_names,
-         FUN = function(raw_synoptic_file) {
-           load_data_synoptic(raw_synoptic_file)
-         }) %>%
-    dplyr::bind_rows() %>%
-    {if(!is.null(dest_file_processed_data)) {
-      readr::write_rds(x = .,
-                       file = dest_file_processed_data)}
-      else {
-        .
+    lapply(X = raw_file_names,
+           FUN = function(raw_synoptic_file) {
+             load_data_synoptic(raw_synoptic_file)
+           }) %>%
+      dplyr::bind_rows() %>%
+      {if(!is.null(dest_file_processed_data)) {
+        readr::write_rds(x = .,
+                         file = dest_file_processed_data)}
+        else {
+          .
+        }}
+  }
+  else if(format == "json") {
+    raw_file_name = file.path(dest_dir_raw_data,
+                               paste0(Sys.Date(),"_",paste0(ids, collapse = "&"),
+                                      ".",format))
+    tidyjson::read_json(raw_file_name) %>%
+      tidyr::unnest_wider("..JSON") %>%
+      tidyr::unnest_longer("STATION") %>%
+      dplyr::select(-c("document.id")) %>%
+      tidyr::hoist("STATION",
+                   "Station_ID" = "STID",
+                   "STATION NAME" = "NAME",
+                   "LATITUDE" = "LATITUDE",
+                   "LONGITUDE" = "LONGITUDE",
+                   "ELEVATION [ft]" = "ELEVATION",
+                   "PERIOD_OF_RECORD" = "PERIOD_OF_RECORD",
+                   "local_timezone" = "TIMEZONE",
+                   "obs" = "OBSERVATIONS")  %>%
+      dplyr::mutate(obs = purrr::map(.x = .data$obs,
+                                     .f = \(obs) {
+                                       tibble::as_tibble(obs) %>%
+                                         tidyr::unnest(cols = tidyselect::everything())}),
+                    across(c("LATITUDE", "LONGITUDE", "ELEVATION [ft]"), as.numeric)) %>%
+      {if(!is.null(dest_file_processed_data)) {
+        readr::write_rds(x = .,
+                         file = dest_file_processed_data)}
+        else {
+          .
         }}
 
+  }
 }
