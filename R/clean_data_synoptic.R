@@ -41,11 +41,12 @@ load_data_synoptic <- function(raw_synoptic_file) {
                                                                        comment = "#",
                                                                        n_max = 0))),
                      by = "Station_ID") %>%
-    clean_data_synoptic() %>%
     dplyr::group_by(across(all_of(c("Station_ID", "STATION NAME",
                                     "LATITUDE", "LONGITUDE", "ELEVATION [ft]",
                                     "STATE", "local_timezone")))) %>%
-    tidyr::nest(.key = "obs")
+    tidyr::nest(.key = "obs") %>%
+    dplyr::mutate(obs = purrr::pmap(.l = list(.data$obs, .data$local_timezone),
+                                    .f = add_local_time))
 }
 
 #' @rdname clean_synoptic
@@ -75,12 +76,11 @@ process_header_synoptic <- function(raw_synoptic_file, offset = 0) {
     dplyr::rename("Station_ID" = "STATION")
 }
 
-clean_data_synoptic <- function(raw_synoptic_df) {
-  #print(raw_synoptic_df$Date_Time[1])
-  #print(raw_synoptic_df$local_timezone[1])
-  raw_synoptic_df %>%
+add_local_time <- function(raw_synoptic_obs_tbl,
+                           local_tzone) {
+  raw_synoptic_obs_tbl %>%
     dplyr::mutate(Date_Time_Local = lubridate::with_tz(time = .data$Date_Time,
-                                                       tzone = .data$local_timezone[1]))
+                                                       tzone = local_tzone))
 }
 
 

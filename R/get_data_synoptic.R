@@ -239,8 +239,17 @@ get_clean_and_save_data_synoptic <- function(dest_dir_raw_data,
       dplyr::mutate(obs = purrr::map(.x = .data$obs,
                                      .f = \(obs) {
                                        tibble::as_tibble(obs) %>%
-                                         tidyr::unnest(cols = tidyselect::everything())}),
+                                         tidyr::unnest(cols = tidyselect::everything()) %>%
+                                         dplyr::rename("Date_Time" = "date_time") %>%
+                                         dplyr::mutate(Date_Time = lubridate::as_datetime(Date_Time))}),
                     across(c("LATITUDE", "LONGITUDE", "ELEVATION [ft]"), as.numeric)) %>%
+      dplyr::mutate(obs = purrr::pmap(.l = list(.data$obs, .data$local_timezone),
+                                      .f = add_local_time)) %>%
+      dplyr::mutate(obs = purrr::map(.x = .data$obs,
+                                    .f = \(obs) {
+                                      obs %>%
+                                        dplyr::select(-matches("cloud_layer_1_set_1d")) %>%
+                                        unique()})) %>%
       {if(!is.null(dest_file_processed_data)) {
         readr::write_rds(x = .,
                          file = dest_file_processed_data)}
