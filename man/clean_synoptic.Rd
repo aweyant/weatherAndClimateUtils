@@ -23,7 +23,7 @@ message appended to each file.}
 }
 \value{
 a nested tibble with columns Station_ID, Station Name, LATITUDE,
-LONGITUDE, ELEVATION \link{ft}, STATE, and obs
+LONGITUDE, ELEVATION [ft], STATE, and obs
 }
 \description{
 Process raw synoptic .csv files into standard tibbles

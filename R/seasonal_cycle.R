@@ -136,7 +136,7 @@ harmonic_ols_regression <- function(df, n_harmonics = 2) {
     tidyr::pivot_longer(cols = !c("date", "lycday") & !dplyr::starts_with("harmonic"),
                         names_to = "name",
                         values_to = "value") %>%
-    dplyr::group_by(name) %>%
+    dplyr::group_by(.data$name) %>%
     dplyr::group_map(function(data, group_info) {
       data.frame(data,
                  group_info$name,
@@ -148,7 +148,7 @@ harmonic_ols_regression <- function(df, n_harmonics = 2) {
     dplyr::bind_cols() %>%
     dplyr::ungroup() %>%
     dplyr::mutate(date = df$date) %>%
-    dplyr::select(date, dplyr::everything())
+    dplyr::select(date, tidyselect::everything())
 }
 
 

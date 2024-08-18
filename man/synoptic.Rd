@@ -16,7 +16,8 @@ get_data_synoptic(
   start = NULL,
   end = NULL,
   recent = NULL,
-  format = "csv"
+  format = "csv",
+  check_existence = FALSE
 )
 
 build_synoptic_api_call(
@@ -40,7 +41,8 @@ get_clean_and_save_data_synoptic(
   start = NULL,
   end = NULL,
   recent = NULL,
-  format = "json"
+  format = "json",
+  check_existence = FALSE
 )
 }
 \arguments{
@@ -66,6 +68,10 @@ obs.}
 \item{format}{string; file format for downloaded data. The valid options are
 "json" and "csv".}
 
+\item{check_existence}{logical; should there be an effort to check the
+dest_dir to see if the data you want have already been downloaded? This harms
+performance, but is less wasteful of your Synoptic account privileges.}
+
 \item{given_api_key}{string of the API token associated with your
 synoptic account}
 
@@ -86,8 +92,8 @@ With a basic, free account, anybody can download up to a year of station
 observations from Synoptic.
 }
 \examples{
-get_data_synoptic(dest_dir = "~/Downloads", ids = c("KSAN", "G3667"),
-start = "202308080000", end = "202308090000")
+#get_data_synoptic(dest_dir = "~/Downloads", ids = c("KSAN", "G3667"),
+#start = "202308080000", end = "202308090000")
 
 get_clean_and_save_data_synoptic(dest_dir_raw_data = file.path("~", "Downloads"),
 dest_file_processed_data = file.path("~","data","weather_today.Rda"),

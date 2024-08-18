@@ -10,7 +10,7 @@ NULL
 #' variables, their units, and, finally, the observations themselves
 #'
 #' @return a nested tibble with columns Station_ID, Station Name, LATITUDE,
-#' LONGITUDE, ELEVATION [ft], STATE, and obs
+#' LONGITUDE, ELEVATION \[ft\], STATE, and obs
 #' @export
 #'
 #' @examples
@@ -20,33 +20,87 @@ NULL
 #' recent = 120)
 #' KSAN_tbl <- load_data_synoptic(file.path("~", "Downloads", paste0(today, "_KSAN.csv")))
 load_data_synoptic <- function(raw_synoptic_file) {
-  # Check to make sure the file contains weather data
-  if(readr::read_lines(file = raw_synoptic_file, n_max = 1) == "# NUMBER_OF_OBJECTS: 0") {
-    warning(paste0(raw_synoptic_file,
-                   " contains no weather observations. Skipping processing this file. Check your station id and time interval."))
-    return(NULL)
-  }
+  if(grepl(pattern = "json|JSON", x = raw_synoptic_file)) {
+    # if(grepl(x = readr::read_lines(file = raw_synoptic_file, n_max = 1),
+    #          "# NUMBER_OF_OBJECTS: 0|\"NUMBER_OF_OBJECTS\":0|NUMBER_OF_OBJECTS")) {
+    #   warning(paste0(raw_synoptic_file,
+    #                  " contains no weather observations. Skipping processing this file. Check your station id and time interval."))
+    #   return(NULL)
+    # }
 
-  # Account for the possibility that weather data were manually downloaded
-  offset <- 0
-  if(readr::read_lines(file = raw_synoptic_file,
-                       n_max = 1,
-                       lazy = TRUE) == "# The provisional data available here are intended for diverse user applications.") {
-    offset <- 4
+    tidyjson::read_json(raw_synoptic_file) %>%
+      tidyr::unnest_wider("..JSON") %>%
+      {
+        if(!("STATION" %in% colnames(.))) {
+          warning(paste0(raw_synoptic_file,
+                         " contains no weather observations. Skipping processing this file. Check your station id and time interval."))
+          return(NULL)
+        }
+        else .
+      } %>%
+      tidyr::unnest_longer("STATION") %>%
+      dplyr::select(-c("document.id")) %>%
+      tidyr::hoist("STATION",
+                   "Station_ID" = "STID",
+                   "STATION NAME" = "NAME",
+                   "LATITUDE" = "LATITUDE",
+                   "LONGITUDE" = "LONGITUDE",
+                   "ELEVATION [ft]" = "ELEVATION",
+                   "PERIOD_OF_RECORD" = "PERIOD_OF_RECORD",
+                   "local_timezone" = "TIMEZONE",
+                   "obs" = "OBSERVATIONS")  %>%
+      dplyr::mutate(obs = purrr::map(.x = .data$obs,
+                                     .f = \(obs) {
+                                       tibble::as_tibble(obs) %>%
+                                         tidyr::unnest(cols = tidyselect::everything()) %>%
+                                         dplyr::rename("Date_Time" = "date_time") %>%
+                                         dplyr::mutate(Date_Time = lubridate::as_datetime(.data$Date_Time))}),
+                    dplyr::across(c("LATITUDE", "LONGITUDE", "ELEVATION [ft]"), as.numeric)) %>%
+      dplyr::mutate(obs = purrr::pmap(.l = list(.data$obs, .data$local_timezone),
+                                      .f = add_local_time)) %>%
+      dplyr::mutate(obs = purrr::map(.x = .data$obs,
+                                     .f = \(obs) {
+                                       obs %>%
+                                         dplyr::select(-tidyselect::matches("cloud_layer_1_set_1d")) %>%
+                                         unique()}))
   }
+  else if (grepl(pattern = "csv|CSV", x = raw_synoptic_file)) {
+    if(grepl(x = readr::read_lines(file = raw_synoptic_file, n_max = 1),
+             "# NUMBER_OF_OBJECTS: 0|\"NUMBER_OF_OBJECTS\":0|NUMBER_OF_OBJECTS")) {
+      warning(paste0(raw_synoptic_file,
+                     " contains no weather observations. Skipping processing this file. Check your station id and time interval."))
+      return(NULL)
+    }
+    # Account for the possibility that weather data were manually downloaded
+    offset <- 0
+    if(readr::read_lines(file = raw_synoptic_file,
+                         n_max = 1,
+                         lazy = TRUE) == "# The provisional data available here are intended for diverse user applications.") {
+      offset <- 4
+    }
 
-  process_header_synoptic(raw_synoptic_file, offset) %>%
-    dplyr::left_join(readr::read_csv(raw_synoptic_file, skip = 8 + offset,
-                                     col_names = names(readr::read_csv(raw_synoptic_file,
-                                                                       comment = "#",
-                                                                       n_max = 0))),
-                     by = "Station_ID") %>%
-    dplyr::group_by(across(all_of(c("Station_ID", "STATION NAME",
-                                    "LATITUDE", "LONGITUDE", "ELEVATION [ft]",
-                                    "STATE", "local_timezone")))) %>%
-    tidyr::nest(.key = "obs") %>%
-    dplyr::mutate(obs = purrr::pmap(.l = list(.data$obs, .data$local_timezone),
-                                    .f = add_local_time))
+    process_header_synoptic(raw_synoptic_file, offset) %>%
+      dplyr::left_join(
+        readr::read_csv(raw_synoptic_file, skip = 8 + offset,
+                        col_names = names(readr::read_csv(raw_synoptic_file,
+                                                          comment = "#",
+                                                          n_max = 0,
+                                                          show_col_types = FALSE)),
+                        show_col_types = FALSE),
+        by = "Station_ID") %>%
+      # Make sure Date_Time is not a character.
+      #dplyr::mutate(Date_Time = lubridate::ymd_hm(Date_Time)) %>%
+      dplyr::group_by(dplyr::across(
+        tidyselect::all_of(c("Station_ID", "STATION NAME",
+                             "LATITUDE", "LONGITUDE", "ELEVATION [ft]",
+                             "STATE", "local_timezone")))) %>%
+      tidyr::nest(.key = "obs") %>%
+      dplyr::mutate(obs = purrr::pmap(.l = list(.data$obs, .data$local_timezone),
+                                      .f = add_local_time))
+  }
+  else {
+    # ERROR
+  }
 }
 
 #' @rdname clean_synoptic
@@ -59,15 +113,17 @@ process_header_synoptic <- function(raw_synoptic_file, offset = 0) {
   readr::read_delim(raw_synoptic_file,
                     n_max = 6,
                     skip = offset,
-                    delim = ":", col_names = FALSE) %>%
-    dplyr::mutate(dplyr::across(.cols = everything(),
+                    delim = ":",
+                    col_names = FALSE,
+                    show_col_types = FALSE) %>%
+    dplyr::mutate(dplyr::across(.cols = tidyselect::everything(),
                                 .fn = \(x) gsub(x = x, pattern = "#", replacement = ""))) %>%
-    dplyr::mutate(dplyr::across(.cols = everything(),
+    dplyr::mutate(dplyr::across(.cols = tidyselect::everything(),
                                 .fn = \(x) stringr::str_trim(string = x, side = "both"))) %>%
     t() %>%
     dplyr::as_tibble() %>%
     janitor::row_to_names(1) %>%
-    dplyr:::mutate(dplyr::across(.cols = c("LATITUDE", "LONGITUDE", "ELEVATION [ft]"),
+    dplyr::mutate(dplyr::across(.cols = c("LATITUDE", "LONGITUDE", "ELEVATION [ft]"),
                                  .fns = as.numeric)) %>%
     dplyr::mutate(local_timezone = lutz::tz_lookup_coords(lat = .data$LATITUDE,
                                                           lon = .data$LONGITUDE,

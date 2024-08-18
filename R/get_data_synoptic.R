@@ -21,12 +21,15 @@ NULL
 #' you can specify the "recent", the number of minutes you wish to count back from
 #' the present moments. Set recent=120 to download the most recent two hours of
 #' obs.
+#' @param check_existence logical; should there be an effort to check the
+#' dest_dir to see if the data you want have already been downloaded? This harms
+#' performance, but is less wasteful of your Synoptic account privileges.
 #'
 #' @return NULL; the function is called for its side-effect
 #'
 #' @examples
-#' get_data_synoptic(dest_dir = "~/Downloads", ids = c("KSAN", "G3667"),
-#' start = "202308080000", end = "202308090000")
+#' #get_data_synoptic(dest_dir = "~/Downloads", ids = c("KSAN", "G3667"),
+#' #start = "202308080000", end = "202308090000")
 #'
 #' @export
 get_data_synoptic <- function(dest_dir,
@@ -47,13 +50,27 @@ get_data_synoptic <- function(dest_dir,
                               start = NULL,
                               end = NULL,
                               recent = NULL,
-                              format = "csv") {
+                              format = "csv",
+                              check_existence = FALSE) {
+  # Look for saved API key if none is given
   if(is.null(api_key)) {
     get_api_key_synoptic()
     api_key <- api_key_env$api_key
   }
 
+  # Download new files if they do not already exist
   if(format == "csv") {
+    if(check_existence) {
+      # Check if files already exist
+      # Some files may exist for the given time period; the ids vector is winnowed
+      # down accordingly.
+      if(is.null(recent)) {
+        ids <- ids[which(is.na(find_data_synoptic(ids = ids,
+                                                  dir = dest_dir,
+                                                  start = start, end = end,
+                                                  format =  format)))]
+      }
+    }
     for(id in ids) {
       api_call <- build_synoptic_api_call(api_key = api_key,
                                           ids = id,
@@ -71,6 +88,15 @@ get_data_synoptic <- function(dest_dir,
     }
   }
   else if(format == "json") {
+    if(check_existence) {
+      if(is.null(recent)) {
+        if(!is.na(find_data_synoptic(ids = ids,
+                                     dir = dest_dir,
+                                     start = start, end = end,
+                                     format =  format)))
+          return(NULL)
+      }
+    }
     api_call <- build_synoptic_api_call(api_key = api_key,
                                         ids = ids,
                                         start = start,
@@ -195,17 +221,23 @@ get_clean_and_save_data_synoptic <- function(dest_dir_raw_data,
                                              start = NULL,
                                              end = NULL,
                                              recent = NULL,
-                                             format = "json") {
+                                             format = "json",
+                                             check_existence = FALSE) {
+
+  # Download synoptic data or do nothing, if specified files already exist
   get_data_synoptic(dest_dir = dest_dir_raw_data,
                     api_key = api_key,
                     ids = ids,
                     start = start,
                     end = end,
                     recent = recent,
-                    format = format)
+                    format = format,
+                    check_existence = check_existence)
 
   if(format == "csv") {
-    raw_file_names = file.path(dest_dir_raw_data, paste0(Sys.Date(),"_",ids,".csv"))
+    # NEED TO UPDATE THIS SO THAT FILE NAMES CAN BE FOUND
+    raw_file_names = file.path(dest_dir_raw_data,
+                               paste0(Sys.Date(),"_",ids,".csv"))
 
     lapply(X = raw_file_names,
            FUN = function(raw_synoptic_file) {
@@ -220,36 +252,13 @@ get_clean_and_save_data_synoptic <- function(dest_dir_raw_data,
         }}
   }
   else if(format == "json") {
-    raw_file_name = file.path(dest_dir_raw_data,
-                               paste0(Sys.Date(),"_",paste0(ids, collapse = "&"),
-                                      ".",format))
-    tidyjson::read_json(raw_file_name) %>%
-      tidyr::unnest_wider("..JSON") %>%
-      tidyr::unnest_longer("STATION") %>%
-      dplyr::select(-c("document.id")) %>%
-      tidyr::hoist("STATION",
-                   "Station_ID" = "STID",
-                   "STATION NAME" = "NAME",
-                   "LATITUDE" = "LATITUDE",
-                   "LONGITUDE" = "LONGITUDE",
-                   "ELEVATION [ft]" = "ELEVATION",
-                   "PERIOD_OF_RECORD" = "PERIOD_OF_RECORD",
-                   "local_timezone" = "TIMEZONE",
-                   "obs" = "OBSERVATIONS")  %>%
-      dplyr::mutate(obs = purrr::map(.x = .data$obs,
-                                     .f = \(obs) {
-                                       tibble::as_tibble(obs) %>%
-                                         tidyr::unnest(cols = tidyselect::everything()) %>%
-                                         dplyr::rename("Date_Time" = "date_time") %>%
-                                         dplyr::mutate(Date_Time = lubridate::as_datetime(Date_Time))}),
-                    across(c("LATITUDE", "LONGITUDE", "ELEVATION [ft]"), as.numeric)) %>%
-      dplyr::mutate(obs = purrr::pmap(.l = list(.data$obs, .data$local_timezone),
-                                      .f = add_local_time)) %>%
-      dplyr::mutate(obs = purrr::map(.x = .data$obs,
-                                    .f = \(obs) {
-                                      obs %>%
-                                        dplyr::select(-matches("cloud_layer_1_set_1d")) %>%
-                                        unique()})) %>%
+    # [ MUST DETERMINE NAME OF RAW FILE]
+    raw_file_name = find_data_synoptic(ids = ids,
+                                       dir = dest_dir_raw_data,
+                                       start = start,
+                                       end = end,
+                                       format = format)
+    load_data_synoptic(raw_file_name) %>%
       {if(!is.null(dest_file_processed_data)) {
         readr::write_rds(x = .,
                          file = dest_file_processed_data)}
