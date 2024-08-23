@@ -177,7 +177,7 @@ get_api_key_synoptic <- function() {
 #' @export
 set_api_key_synoptic <- function(given_api_key, force = FALSE) {
   user_data_dir <- rappdirs::user_data_dir(appname = "weatherAndClimateUtils")
-  api_key_env$api_key <- given_api_key
+  api_key_env$api_useekey <- given_api_key
   if(!force && interactive()){
     result <- utils::select.list(c("Yes", "No"),
                                  title = "API token set. Would you like this to persist between sessions?")
