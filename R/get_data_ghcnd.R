@@ -5,7 +5,7 @@ get_data_ghcnd <- function(dest_dir, ids, check_existence = FALSE) {
   ghcnd_dl_wrapper <- function(id) {
     url <- paste0(ghcnd_url_base, id, ".csv")
     dest <- file.path(dest_dir, paste0(id, ".csv"))
-    download.file(url = url, destfile = dest)
+    utils::download.file(url = url, destfile = dest)
   }
   safely_download_ghcnd <- purrr::safely(.f = \(id) {ghcnd_dl_wrapper(id)})
   purrr::map(.x = ids,
