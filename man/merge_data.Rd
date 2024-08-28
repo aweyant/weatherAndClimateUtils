@@ -4,13 +4,16 @@
 \alias{merge_data}
 \title{Functions for consolidating observations from different data sources}
 \usage{
-merge_data(synoptic_df, ghcnd_df)
+merge_data(synoptic_df = NULL, synoptic_daily_df = NULL, ghcnd_df = NULL)
 }
 \arguments{
 \item{synoptic_df}{data.frame; observations from Synoptic Data PBC, as
 outputted by weatherAndClimateUitls::load_data_synoptic()}
 
-\item{ghcnd_df}{data.frame; observations from GHCNdm, as outputted by
+\item{synoptic_daily_df}{data.frame; observations from synoptic, summarized
+to daily resolution by weatherAndClimateUtils::aggregate_data()}
+
+\item{ghcnd_df}{data.frame; observations from GHCNd, as outputted by
 weatherAndClimatePlots::clean_raw_ghcnd_to_standard()}
 }
 \value{

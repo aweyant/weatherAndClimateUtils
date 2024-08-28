@@ -135,8 +135,13 @@ default_agg_functions <- function() {
 
 #' @rdname default_agg_functions
 default_agg_vars_synoptic <- function() {
-  c("air_temp_set_1", "precip_intervals_set_1d","relative_humidity_set_1",
-    "dewpoint_temperature_set_1", "dew_point_temperature_set_1")
+  c("air_temp_set_1",
+    "dew_point_temperature_set_1", "dew_point_temperature_set_1d",
+    "solar_radiation_set_1",
+    "precip_intervals_set_1d",
+    "relative_humidity_set_1",
+    "wind_speed_set_1", "wind_gust_set_1", "peak_wind_speed_set_1",
+    "sea_level_pressure_set_1")
 }
 
 #' @name default_agg_functions
