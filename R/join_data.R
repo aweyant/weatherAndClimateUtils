@@ -14,17 +14,44 @@
 #' are sometimes hourly.
 #' @export
 merge_data <- function(synoptic_df = NULL, synoptic_daily_df = NULL, ghcnd_df = NULL) {
-  if(!is.null(synoptic_daily_df) & !is.null(ghcnd_df)) {
-    return(dplyr::rows_upsert(x = synoptic_daily_df, y = ghcnd_df,
-                              by = "date") %>%
-             dplyr::arrange(.data$date))
-  }
-  if(!is.null(synoptic_df) & !is.null(ghcnd_df)) {
-    return(dplyr::rows_upsert(x = aggregate_data_synoptic(synoptic_df), y = ghcnd_df,
-                              by = "date") %>%
-             dplyr::arrange(.data$date))
-  }
-  if(is.null(synoptic_df) & is.null(synoptic_daily_df) & !is.null(ghcnd_df)) {
-    return(ghcnd_df)
-  }
-  }
+  # # synoptic_daily [o], ghcnd [o]
+  # if(!is.null(synoptic_daily_df) & !is.null(ghcnd_df)) {
+  #   return(dplyr::rows_upsert(x = synoptic_daily_df,
+  #                             y = ghcnd_df,
+  #                             by = "date") %>%
+  #            dplyr::arrange(.data$date))
+  # }
+  # # synoptic [o], ghcnd [o]
+  # if(!is.null(synoptic_df) & !is.null(ghcnd_df)) {
+  #   return(dplyr::rows_upsert(x = aggregate_data_synoptic(synoptic_df),
+  #                             y = ghcnd_df,
+  #                             by = "date") %>%
+  #            dplyr::arrange(.data$date))
+  # }
+  # # synoptic [x], synoptic_daily [x], ghcnd [o]
+  # if(is.null(synoptic_df) & is.null(synoptic_daily_df) & !is.null(ghcnd_df)) {
+  #   return(ghcnd_df)
+  # }
+
+  {
+    if(is.null(synoptic_df) & !is.null(synoptic_daily_df)) {
+      synoptic_daily_df
+    }
+    else if(!is.null(synoptic_df) & is.null(synoptic_daily_df)) {
+      aggregate_data_synoptic(synoptic_df)
+    }
+  } %>%
+    {
+      if(!is.null(ghcnd_df)) {
+        dplyr::rows_upsert(x = (.),
+                           y = ghcnd_df,
+                           by = "date") %>%
+          dplyr::arrange(.data$date)
+      }
+      else {
+        (.)
+      }
+    }
+}
+
+

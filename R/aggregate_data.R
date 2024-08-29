@@ -110,8 +110,8 @@ aggregate_data_synoptic <- function(data_df, agg_period = "day",
                           agg_vars = agg_vars, agg_functions = agg_functions) %>%
     dplyr::rename_with(
       .cols = tidyselect::everything(),
-      .fn = synoptic_to_ghcnd_names)
-
+      .fn = synoptic_to_ghcnd_names) %>%
+    add_column_if_does_not_exist(c("tmin", "tmax", "precip"))
 }
 
 #' Helper functions and data for aggregate_data()
@@ -166,4 +166,23 @@ synoptic_to_ghcnd_names <- function(col_name) {
 tag_wy <- function (year, month, wy_first_month = 10)
 {
   dplyr::if_else(month >= wy_first_month, year + 1, year)
+}
+
+
+#' Add dummy columns to data.frames, given they do not exist
+#'
+#' @param df data.frame to augment
+#' @param colname vector of strings; names of potential dummy columns
+#'
+#' @examples
+#' df <- data.frame(a = c(1:3, replicate(3,NA)), b = 5:10)
+#' colnames <- c("b", "c", "d")
+#' weatherAndClimateUtils:::add_column_if_does_not_exist(df,colnames)
+add_column_if_does_not_exist <- function(df, colnames) {
+
+  add <- colnames[!(colnames %in% names(df))]
+
+  if(length(add)!=0) df[add] <- NA_real_
+
+  df
 }
