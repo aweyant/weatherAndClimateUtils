@@ -141,7 +141,7 @@ default_agg_vars_synoptic <- function() {
     "precip_intervals_set_1d",
     "relative_humidity_set_1",
     "wind_speed_set_1", "wind_gust_set_1", "peak_wind_speed_set_1",
-    "sea_level_pressure_set_1")
+    "sea_level_pressure_set_1d")
 }
 
 #' @name default_agg_functions
