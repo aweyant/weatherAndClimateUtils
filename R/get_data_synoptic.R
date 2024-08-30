@@ -28,7 +28,7 @@ NULL
 #' @return NULL; the function is called for its side-effect
 #'
 #' @examples
-#' #get_data_synoptic(dest_dir = "~/Downloads", ids = c("KSAN", "G3667"),
+#' #get_data_synoptic(dest_dir =  file.path("~", "Downloads"), ids = c("KSAN", "G3667"),
 #' #start = "202308080000", end = "202308090000")
 #'
 #' @export
@@ -177,7 +177,7 @@ get_api_key_synoptic <- function() {
 #' @export
 set_api_key_synoptic <- function(given_api_key, force = FALSE) {
   user_data_dir <- rappdirs::user_data_dir(appname = "weatherAndClimateUtils")
-  api_key_env$api_useekey <- given_api_key
+  api_key_env$api_key <- given_api_key
   if(!force && interactive()){
     result <- utils::select.list(c("Yes", "No"),
                                  title = "API token set. Would you like this to persist between sessions?")
@@ -209,8 +209,9 @@ set_api_key_synoptic <- function(given_api_key, force = FALSE) {
 #' "json" and "csv".
 #'
 #' @examples
+#' require(rappdirs)
 #' get_clean_and_save_data_synoptic(dest_dir_raw_data = file.path("~", "Downloads"),
-#' dest_file_processed_data = file.path("~","data","weather_today.Rda"),
+#' dest_file_processed_data = file.path(rappdirs::user_data_dir("weatherAndClimateUtils),"weather_today.Rda"),
 #' ids = c("KSAN", "G3667", "G4747"),
 #' recent = 120)
 #' @export

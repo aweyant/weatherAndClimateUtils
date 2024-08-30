@@ -92,11 +92,7 @@ With a basic, free account, anybody can download up to a year of station
 observations from Synoptic.
 }
 \examples{
-#get_data_synoptic(dest_dir = "~/Downloads", ids = c("KSAN", "G3667"),
+#get_data_synoptic(dest_dir =  file.path("~", "Downloads"), ids = c("KSAN", "G3667"),
 #start = "202308080000", end = "202308090000")
 
-get_clean_and_save_data_synoptic(dest_dir_raw_data = file.path("~", "Downloads"),
-dest_file_processed_data = file.path("~","data","weather_today.Rda"),
-ids = c("KSAN", "G3667", "G4747"),
-recent = 120)
 }
