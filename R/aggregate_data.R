@@ -138,7 +138,7 @@ default_agg_vars_synoptic <- function() {
   c("air_temp_set_1",
     "dew_point_temperature_set_1", "dew_point_temperature_set_1d",
     "solar_radiation_set_1",
-    "precip_intervals_set_1d",
+    "precip_accum_since_local_midnight_set_1",
     "relative_humidity_set_1",
     "wind_speed_set_1", "wind_gust_set_1", "peak_wind_speed_set_1",
     "pressure_set_1d")
@@ -152,8 +152,8 @@ synoptic_to_ghcnd_names <- function(col_name) {
     col_name == "air_temp_set_1_max" ~ "tmax",
     col_name == "air_temp_set_1_n_obs" ~ "tmax_tmin_n_obs",
     col_name == "air_temp_set_1_min" ~ "tmin",
-    col_name == "precip_intervals_set_1d_max_n_obs" ~ "precip_n_obs",
-    col_name == "precip_intervals_set_1d_total" ~ "precip",
+    col_name == "precip_accum_since_local_midnight_set_1d_max_n_obs" ~ "precip_n_obs",
+    col_name == "precip_accum_since_local_midnight_set_1_max" ~ "precip",
     TRUE ~ col_name)
 }
 
