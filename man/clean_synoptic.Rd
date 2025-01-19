@@ -29,9 +29,9 @@ LONGITUDE, ELEVATION [ft], STATE, and obs
 Process raw synoptic .csv files into standard tibbles
 }
 \examples{
-today <- Sys.Date()
-get_data_synoptic(ids = "KSAN",
-dest_dir = file.path('~', "Downloads"),
-recent = 120)
-KSAN_tbl <- load_data_synoptic(file.path("~", "Downloads", paste0(today, "_KSAN.csv")))
+#today <- Sys.Date()
+#get_data_synoptic(ids = "KSAN",
+#dest_dir = file.path('~', "Downloads"),
+#recent = 120)
+#KSAN_tbl <- load_data_synoptic(file.path("~", "Downloads", paste0(today, "_KSAN.csv")))
 }

@@ -14,11 +14,11 @@ NULL
 #' @export
 #'
 #' @examples
-#' today <- Sys.Date()
-#' get_data_synoptic(ids = "KSAN",
-#' dest_dir = file.path('~', "Downloads"),
-#' recent = 120)
-#' KSAN_tbl <- load_data_synoptic(file.path("~", "Downloads", paste0(today, "_KSAN.csv")))
+#' #today <- Sys.Date()
+#' #get_data_synoptic(ids = "KSAN",
+#' #dest_dir = file.path('~', "Downloads"),
+#' #recent = 120)
+#' #KSAN_tbl <- load_data_synoptic(file.path("~", "Downloads", paste0(today, "_KSAN.csv")))
 load_data_synoptic <- function(raw_synoptic_file) {
   if(grepl(pattern = "json|JSON", x = raw_synoptic_file)) {
     # if(grepl(x = readr::read_lines(file = raw_synoptic_file, n_max = 1),
@@ -90,6 +90,9 @@ load_data_synoptic <- function(raw_synoptic_file) {
         by = "Station_ID") %>%
       # Make sure Date_Time is not a character.
       #dplyr::mutate(Date_Time = lubridate::ymd_hm(Date_Time)) %>%
+      # Make sure pressure variables are numeric
+      dplyr::mutate(dplyr::across(tidyselect::contains("pressure_set"),
+                                  .fns = as.numeric)) %>%
       dplyr::group_by(dplyr::across(
         tidyselect::all_of(c("Station_ID", "STATION NAME",
                              "LATITUDE", "LONGITUDE", "ELEVATION [ft]",
