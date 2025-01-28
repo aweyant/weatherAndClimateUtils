@@ -64,6 +64,7 @@ aggregate_data_subdaily <- function(data_df, agg_period = "day", agg_vars = NULL
 
 aggregate_data_ghcnd <- function(data_df, agg_period = "year", agg_vars = NULL,
                                  agg_functions = default_agg_functions()) {
+  agg_period_label <- switch(agg_period, month = "monthly", year = "annual", wy = "water_yearly")
   data_df %>%
     dplyr::rename("Date_Local" = "date") %>%
     # Add new time columns for grouping
@@ -85,7 +86,8 @@ aggregate_data_ghcnd <- function(data_df, agg_period = "year", agg_vars = NULL,
         .f = \(df) {
           df %>%
             dplyr::summarise(dplyr::across(tidyselect::any_of(agg_vars),
-                                           .fns = agg_functions))}),
+                                           .fns = agg_functions,
+                                           .names = "{agg_period_label}_{.fn}_{.col}"))}),
       precip_accum = purrr::map(.x = .data$daily_obs,
                          .f = \(df) {
                            df %>%
