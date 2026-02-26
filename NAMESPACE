@@ -3,6 +3,7 @@
 export("%>%")
 export(aggregate_data)
 export(build_synoptic_api_call)
+export(clean_raw_ghcnd_to_standard)
 export(find_data_synoptic)
 export(get_api_key_synoptic)
 export(get_clean_and_save_data_synoptic)
