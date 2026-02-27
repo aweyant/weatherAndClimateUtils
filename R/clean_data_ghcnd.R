@@ -27,6 +27,9 @@
 #' @param begin_date,end_date [POSIXct] (optional) prescribed beginning and end
 #' dates for the record. The default is first and last date contained in
 #' raw_ghcnd_df
+#' @param expand_flag_codes [logical] Should the single-character flag codes be
+#' expanded into proper descriptions? Set to FALSE, if you intend to keep small
+#' file sizes, otherwise TRUE is recommended.
 #'
 #' @details
 #' \strong{Quality flags:}
@@ -68,8 +71,15 @@
 #' clean_raw_ghcnd_to_standard(raw_df) %>% dplyr::filter(is.na(tmax))
 #'
 #' clean_raw_ghcnd_to_standard(raw_df, begin_date = lubridate::ymd("2000-01-01"), end_date = lubridate::ymd("2000-12-31")) %>% View()
+#'
+#' # Checking the flagging behavior
+#' raw_df %>%
+#'   dplyr::select(DATE, TMIN, TOBS, TMAX, TMAX_ATTTRIBUTES) %>%
+#'   dplyr::filter(lubridate::month(DATE) == 3, lubridate::year(DATE)==2000)
+#' # There is an example of a TMAX not being consistent with instantaneously
+#' # observed temperature on the previous day.
 #' }
-clean_raw_ghcnd_to_standard <- function(raw_ghcnd_df, select_SOD_cols = TRUE, begin_date = NULL, end_date = NULL) {
+clean_raw_ghcnd_to_standard <- function(raw_ghcnd_df, select_SOD_cols = TRUE, begin_date = NULL, end_date = NULL, expand_flag_codes = TRUE) {
   raw_ghcnd_df %>%
     # Add blank/NA rows for any days completely missing from the record
     {
@@ -114,7 +124,7 @@ clean_raw_ghcnd_to_standard <- function(raw_ghcnd_df, select_SOD_cols = TRUE, be
               `2` = "quality_flag",
               `3` = "source_flag",
               `4` = "tobs"
-            )
+              )
           )
         }
       ) %>%
@@ -122,27 +132,34 @@ clean_raw_ghcnd_to_standard <- function(raw_ghcnd_df, select_SOD_cols = TRUE, be
     {
       add_column_if_does_not_exist((.), colname = c("PRCP_tobs", "TMIN_tobs", "TMAX_tobs"), filler = NA_character_)
     } %>%
-    # Rewrite the measurement and quality codes as proper notes
-    dplyr::mutate(
-      dplyr::across(
-        .cols = tidyselect::contains("measurement_flag"),
-        .fns = list(
-          \(flg) {
-            ghcn_measurement_dict$note[match(flg, ghcn_measurement_dict$flag)]
-            }
-          ),
-         .names = "{.col}_expanded"
-        )
-      ) %>%
-    dplyr::mutate(
-      dplyr::across(
-        .cols = tidyselect::contains("quality_flag"),
-      .fns = list(
-        expanded = function(flg) {
-          ghcn_quality_dict$note[match(flg, ghcn_quality_dict$flag)]
-        })
-      )
-    ) %>%
+    # (optionally) Rewrite the measurement and quality codes as proper notes
+    {
+      if(expand_flag_codes) {
+        (.) %>%
+          dplyr::mutate(
+            dplyr::across(
+              .cols = tidyselect::contains("measurement_flag"),
+              .fns = list(
+                \(flg) {
+                  ghcn_measurement_dict$note[match(flg, ghcn_measurement_dict$flag)]
+                }
+              ),
+              .names = "{.col}_expanded"
+            )
+          ) %>%
+          dplyr::mutate(
+            dplyr::across(
+              .cols = tidyselect::contains("quality_flag"),
+              .fns = list(
+                expanded = function(flg) {
+                  ghcn_quality_dict$note[match(flg, ghcn_quality_dict$flag)]
+                  }
+                )
+              )
+            )
+        }
+      else (.)
+      } %>%
     # Make all column names lower case
     dplyr::rename_with(.cols = tidyselect::everything(), .fn = tolower) %>%
     # Rename "prcp" to "precip"

@@ -8,7 +8,8 @@ clean_raw_ghcnd_to_standard(
   raw_ghcnd_df,
   select_SOD_cols = TRUE,
   begin_date = NULL,
-  end_date = NULL
+  end_date = NULL,
+  expand_flag_codes = TRUE
 )
 }
 \arguments{
@@ -23,6 +24,10 @@ precip, tmin, and tmax which constitute a traditional "summary of the day"
 \item{begin_date, end_date}{\link[lubridate:posix_utils]{lubridate::POSIXct} (optional) prescribed beginning and end
 dates for the record. The default is first and last date contained in
 raw_ghcnd_df}
+
+\item{expand_flag_codes}{\link{logical} Should the single-character flag codes be
+expanded into proper descriptions? Set to FALSE, if you intend to keep small
+file sizes, otherwise TRUE is recommended.}
 }
 \value{
 a data.frame with a GHCNd record in a more sensible format; NB, the
@@ -82,5 +87,10 @@ clean_raw_ghcnd_to_standard(raw_df)
 clean_raw_ghcnd_to_standard(raw_df) \%>\% dplyr::filter(is.na(tmax))
 
 clean_raw_ghcnd_to_standard(raw_df, begin_date = lubridate::ymd("2000-01-01"), end_date = lubridate::ymd("2000-12-31")) \%>\% View()
+
+# Checking the flagging behavior
+raw_df \%>\%
+  dplyr::select(DATE, TMIN, TOBS, TMAX, TMAX_ATTTRIBUTES) \%>\%
+  dplyr::filter(lubridate::month(DATE) == 3, lubridate::year(DATE)==2000)
 }
 }
