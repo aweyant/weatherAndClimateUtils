@@ -21,7 +21,7 @@
 #' @param raw_ghcnd_df the pure, raw data.frame you get from reading a GHCNd
 #' comma-separated file into R with a function such as read.csv() or
 #' readr::read_csv()
-#' @param select_SOD_cols [logical] Should only the data columns concerning
+#' @param select_SOD_cols [logical] Should only the data columns pertaining to
 #' precip, tmin, and tmax which constitute a traditional "summary of the day"
 #' (SOD)?
 #' @param begin_date,end_date [POSIXct] (optional) prescribed beginning and end
@@ -44,15 +44,20 @@
 #' Flag ``L'' means that a temperature observation is probably offset from its
 #' purported calendar day. This is a dealbreaker for spatial interpolation.
 #'
+#' Overall, the QC checks described in Durre et al. 2010 rarely flag valid
+#' observations. However, the level of culling is left to the end user.
+#'
 #' @returns a data.frame with a GHCNd record in a more sensible format; NB, the
-#' default behaviour is such that no data are removed by this function.
+#' default behaviour is such that no data are removed by this function. The
+#' single-character measurement and quality flags are expanded into short
+#' descriptions for easier reading.
 #'
 #' @export
 #'
 #' @examples
 #' \dontrun{
 #' path <- file.path("","home","alexander","Downloads")
-#' id <- "USW00093112" # North Island NAS
+#' id <- "USC00040983" # Anza Borrego
 #' get_data_ghcnd(dest_dir = path,
 #'                ids = id,
 #'                check_existence = FALSE)
@@ -70,7 +75,7 @@ clean_raw_ghcnd_to_standard <- function(raw_ghcnd_df, select_SOD_cols = TRUE, be
     {
       dplyr::left_join(
         tibble::tibble(
-          DATE = seq.DATE(from = ifelse(is.null(begin_date), min((.)$DATE), begin_date),
+          DATE = seq.Date(from = ifelse(is.null(begin_date), min((.)$DATE), begin_date),
                           to = ifelse(is.null(end_date), max((.)$DATE), end_date),
                           by = '1 day')
         ),
@@ -84,40 +89,64 @@ clean_raw_ghcnd_to_standard <- function(raw_ghcnd_df, select_SOD_cols = TRUE, be
         .cols = tidyselect::any_of(c("TMIN", "TMAX", "PRCP", "TAVE")),
         .fns = \(x) x/10)
       ) %>%
+    dplyr::mutate(
+      dplyr::across(
+        .cols = tidyselect::any_of(
+          c("TMAX_ATTRIBUTES","TMIN_ATTRIBUTES","PRCP_ATTRIBUTES")
+        ),
+        .fns = \(x) {dplyr::if_else(is.na(x), ",,", x)}
+      )
+    ) %>%
+    # Split the single attribute column into three, potentially four types
+    tidyr::separate_wider_delim(
+      cols = tidyselect::any_of(c("TMAX_ATTRIBUTES","TMIN_ATTRIBUTES","PRCP_ATTRIBUTES")),
+      delim = ",", names_sep = "_", too_few = "align_start", too_many = "drop") %>%
+    # Name the attribute columns
+    dplyr::rename_with(
+      .cols = tidyselect::contains("ATTRIBUTES"),
+      .fn = \(colname) {
+        # PRCP_ATTRIBUTES_1 becomes "prcp_measurement_flag"
+        # PRCP_ATTRIBUTES_4 becomes "prcp_tobs"
+        stringr::str_remove_all(colname, "ATTRIBUTES_") %>%
+          stringr::str_replace_all(
+            pattern = c(
+              `1` = "measurement_flag",
+              `2` = "quality_flag",
+              `3` = "source_flag",
+              `4` = "tobs"
+            )
+          )
+        }
+      ) %>%
+    # Add TOBS columns, if none exist
     {
-      if(all(c("TMAX_ATTRIBUTES", "TMIN_ATTRIBUTES", "PRCP_ATTRIBUTES") %in%
-             names(.))) {
-        (. %>%
-           dplyr::mutate(
-             dplyr::across(
-               .cols = tidyselect::all_of(
-                 c("TMAX_ATTRIBUTES","TMIN_ATTRIBUTES", "PRCP_ATTRIBUTES")
-                 ),
-               .fns = \(x) {dplyr::if_else(is.na(x), ",,", x)}
-               )
-             ) %>%
-           tidyr::separate_wider_delim(
-             cols = tidyselect::all_of(c("TMAX_ATTRIBUTES","TMIN_ATTRIBUTES","PRCP_ATTRIBUTES")),
-             delim = ",", names_sep = "_", too_few = "align_start", too_many = "drop") %>%
-           dplyr::mutate(TMAX = dplyr::case_when(TMAX_ATTRIBUTES_1 %in% c("L") ~ NA,
-                                                 TMAX_ATTRIBUTES_2 != "" ~ NA,
-                                                 TRUE ~ TMAX),
-                         TMIN = dplyr::case_when(TMIN_ATTRIBUTES_1 %in% c("L") ~ NA,
-                                                 TMIN_ATTRIBUTES_2 != "" ~ NA,
-                                                 TRUE ~ TMIN),
-                         PRCP = dplyr::case_when(PRCP_ATTRIBUTES_1 %in% c("A") ~ NA,
-                                                 PRCP_ATTRIBUTES_2 != "" ~ NA,
-                                                 TRUE ~ PRCP))# %>%
-         # dplyr::rename_with(
-         #   .cols = tidyselect::any_of("PRCP_ATTRIBUTES_4"), .fn = \(str) {str;return("tobs_precip")})
-        )(.)
-      }
-      else .
+      add_column_if_does_not_exist((.), colname = c("PRCP_tobs", "TMIN_tobs", "TMAX_tobs"), filler = NA_character_)
     } %>%
+    # Rewrite the measurement and quality codes as proper notes
+    dplyr::mutate(
+      dplyr::across(
+        .cols = tidyselect::contains("measurement_flag"),
+        .fns = list(
+          \(flg) {
+            ghcn_measurement_dict$note[match(flg, ghcn_measurement_dict$flag)]
+            }
+          ),
+         .names = "{.col}_expanded"
+        )
+      ) %>%
+    dplyr::mutate(
+      dplyr::across(
+        .cols = tidyselect::contains("quality_flag"),
+      .fns = list(
+        expanded = function(flg) {
+          ghcn_quality_dict$note[match(flg, ghcn_quality_dict$flag)]
+        })
+      )
+    ) %>%
     # Make all column names lower case
     dplyr::rename_with(.cols = tidyselect::everything(), .fn = tolower) %>%
     # Rename "prcp" to "precip"
-    dplyr::rename_with(.cols = tidyselect::any_of("prcp"), .fn = \(str){return("precip")}) %>%
+    dplyr::rename_with(.cols = tidyselect::contains("prcp"), .fn = \(str){gsub(x = str, pattern = "prcp", replacement = "precip")}) %>%
     # (OPTIONALLY) return only columns concerning the basic daily SOD (tmin,
     # tmax, and precip)
     {

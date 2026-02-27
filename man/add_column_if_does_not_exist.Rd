@@ -4,10 +4,12 @@
 \alias{add_column_if_does_not_exist}
 \title{Add dummy columns to data.frames, given they do not exist}
 \usage{
-add_column_if_does_not_exist(df, colnames)
+add_column_if_does_not_exist(df, colnames, filler = NA_real_)
 }
 \arguments{
 \item{df}{data.frame to augment}
+
+\item{filler}{what should be used to fill the dummy columns?}
 
 \item{colname}{vector of strings; names of potential dummy columns}
 }

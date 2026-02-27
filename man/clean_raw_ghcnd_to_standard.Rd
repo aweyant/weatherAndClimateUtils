@@ -16,7 +16,7 @@ clean_raw_ghcnd_to_standard(
 comma-separated file into R with a function such as read.csv() or
 readr::read_csv()}
 
-\item{select_SOD_cols}{\link{logical} Should only the data columns concerning
+\item{select_SOD_cols}{\link{logical} Should only the data columns pertaining to
 precip, tmin, and tmax which constitute a traditional "summary of the day"
 (SOD)?}
 
@@ -25,7 +25,10 @@ dates for the record. The default is first and last date contained in
 raw_ghcnd_df}
 }
 \value{
-a data.frame with a GHCNd record in a more sensible format
+a data.frame with a GHCNd record in a more sensible format; NB, the
+default behaviour is such that no data are removed by this function. The
+single-character measurement and quality flags are expanded into short
+descriptions for easier reading.
 }
 \description{
 Files downloaded from NOAA's Global Historical Climatological Network (GHCN)
@@ -61,11 +64,14 @@ value in fact represents a multi-day total.
 
 Flag ``L'' means that a temperature observation is probably offset from its
 purported calendar day. This is a dealbreaker for spatial interpolation.
+
+Overall, the QC checks described in Durre et al. 2010 rarely flag valid
+observations. However, the level of culling is left to the end user.
 }
 \examples{
 \dontrun{
 path <- file.path("","home","alexander","Downloads")
-id <- "USW00093112" # North Island NAS
+id <- "USC00040983" # Anza Borrego
 get_data_ghcnd(dest_dir = path,
                ids = id,
                check_existence = FALSE)

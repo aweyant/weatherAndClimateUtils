@@ -175,16 +175,17 @@ tag_wy <- function (year, month, wy_first_month = 10)
 #'
 #' @param df data.frame to augment
 #' @param colname vector of strings; names of potential dummy columns
+#' @param filler what should be used to fill the dummy columns?
 #'
 #' @examples
 #' df <- data.frame(a = c(1:3, replicate(3,NA)), b = 5:10)
 #' colnames <- c("b", "c", "d")
 #' weatherAndClimateUtils:::add_column_if_does_not_exist(df,colnames)
-add_column_if_does_not_exist <- function(df, colnames) {
+add_column_if_does_not_exist <- function(df, colnames, filler = NA_real_) {
 
   add <- colnames[!(colnames %in% names(df))]
 
-  if(length(add)!=0) df[add] <- NA_real_
+  if(length(add)!=0) df[add] <- filler
 
   df
 }
