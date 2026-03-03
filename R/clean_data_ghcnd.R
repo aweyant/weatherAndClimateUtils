@@ -22,8 +22,8 @@
 #' comma-separated file into R with a function such as read.csv() or
 #' readr::read_csv()
 #' @param select_SOD_cols [logical] Should only the data columns pertaining to
-#' precip, tmin, and tmax which constitute a traditional "summary of the day"
-#' (SOD)?
+#' precip, tmin, tmax, and tobs (meaning temperature at the time of observation)
+#' which constitute a traditional "summary of the day" (SOD)?
 #' @param begin_date,end_date [POSIXct] (optional) prescribed beginning and end
 #' dates for the record. The default is first and last date contained in
 #' raw_ghcnd_df
@@ -96,20 +96,20 @@ clean_raw_ghcnd_to_standard <- function(raw_ghcnd_df, select_SOD_cols = TRUE, be
     # Convert units of tmin, tmax, and precip
     dplyr::mutate(
       dplyr::across(
-        .cols = tidyselect::any_of(c("TMIN", "TMAX", "PRCP", "TAVE")),
+        .cols = tidyselect::any_of(c("TMIN", "TMAX", "PRCP", "TOBS", "TAVE")),
         .fns = \(x) x/10)
       ) %>%
     dplyr::mutate(
       dplyr::across(
         .cols = tidyselect::any_of(
-          c("TMAX_ATTRIBUTES","TMIN_ATTRIBUTES","PRCP_ATTRIBUTES")
+          c("TMAX_ATTRIBUTES","TMIN_ATTRIBUTES","PRCP_ATTRIBUTES", "TOBS_ATTRIBUTES")
         ),
         .fns = \(x) {dplyr::if_else(is.na(x), ",,", x)}
       )
     ) %>%
     # Split the single attribute column into three, potentially four types
     tidyr::separate_wider_delim(
-      cols = tidyselect::any_of(c("TMAX_ATTRIBUTES","TMIN_ATTRIBUTES","PRCP_ATTRIBUTES")),
+      cols = tidyselect::any_of(c("TMAX_ATTRIBUTES","TMIN_ATTRIBUTES","PRCP_ATTRIBUTES", "TOBS_ATTRIBUTES")),
       delim = ",", names_sep = "_", too_few = "align_start", too_many = "drop") %>%
     # Name the attribute columns
     dplyr::rename_with(
@@ -130,7 +130,7 @@ clean_raw_ghcnd_to_standard <- function(raw_ghcnd_df, select_SOD_cols = TRUE, be
       ) %>%
     # Add TOBS columns, if none exist
     {
-      add_column_if_does_not_exist((.), colname = c("PRCP_tobs", "TMIN_tobs", "TMAX_tobs"), filler = NA_character_)
+      add_column_if_does_not_exist((.), colname = c("PRCP_tobs", "TMIN_tobs", "TMAX_tobs", "TOBS_tobs"), filler = NA_character_)
     } %>%
     # (optionally) Rewrite the measurement and quality codes as proper notes
     {
@@ -171,7 +171,7 @@ clean_raw_ghcnd_to_standard <- function(raw_ghcnd_df, select_SOD_cols = TRUE, be
         (.) %>%
           dplyr::select(
             tidyselect::any_of(c("date","station","latitude","longitude","elevation","name")),
-            tidyselect::starts_with(c("precip", "tmin", "tmax"))
+            tidyselect::starts_with(c("precip", "tmin", "tmax", "tobs"))
           )
         }
       else (.)

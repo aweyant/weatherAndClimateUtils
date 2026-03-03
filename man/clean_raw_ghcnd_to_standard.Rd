@@ -18,8 +18,8 @@ comma-separated file into R with a function such as read.csv() or
 readr::read_csv()}
 
 \item{select_SOD_cols}{\link{logical} Should only the data columns pertaining to
-precip, tmin, and tmax which constitute a traditional "summary of the day"
-(SOD)?}
+precip, tmin, tmax, and tobs (meaning temperature at the time of observation)
+which constitute a traditional "summary of the day" (SOD)?}
 
 \item{begin_date, end_date}{\link[lubridate:posix_utils]{lubridate::POSIXct} (optional) prescribed beginning and end
 dates for the record. The default is first and last date contained in
@@ -92,5 +92,7 @@ clean_raw_ghcnd_to_standard(raw_df, begin_date = lubridate::ymd("2000-01-01"), e
 raw_df \%>\%
   dplyr::select(DATE, TMIN, TOBS, TMAX, TMAX_ATTTRIBUTES) \%>\%
   dplyr::filter(lubridate::month(DATE) == 3, lubridate::year(DATE)==2000)
+# There is an example of a TMAX not being consistent with instantaneously
+# observed temperature on the previous day.
 }
 }
