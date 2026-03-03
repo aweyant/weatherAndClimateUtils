@@ -82,7 +82,14 @@ get_data_ghcnd(dest_dir = path,
                check_existence = FALSE)
 raw_df <- readr::read_csv(file.path(path, paste0(id,".csv")))
 
-clean_raw_ghcnd_to_standard(raw_df)
+cleaned_df <- clean_raw_ghcnd_to_standard(raw_df)
+
+cleaned_df \%>\%
+dplyr::select(date, tmin, tobs, tmax, tmax_quality_flag, ends_with("tobs")) \%>\%
+dplyr::filter(!is.na(tobs)) \%>\%
+dplyr::filter(tmax_quality_flag != "" |
+dplyr::lead(tmax_quality_flag) != "" |
+dplyr::lag(tmax_quality_flag) != "")
 
 clean_raw_ghcnd_to_standard(raw_df) \%>\% dplyr::filter(is.na(tmax))
 
