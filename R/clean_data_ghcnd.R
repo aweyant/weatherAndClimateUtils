@@ -135,9 +135,18 @@ clean_raw_ghcnd_to_standard <- function(raw_ghcnd_df, select_SOD_cols = TRUE, be
           )
         }
       ) %>%
+    # Add the column called "TOBS" (meaning temperature at time of observation)
+    {
+      add_column_if_does_not_exist(
+        (.),
+        colname = c("TOBS"), filler = NA_real_)
+    } %>%
     # Add TOBS columns, if none exist
     {
-      add_column_if_does_not_exist((.), colname = c("PRCP_tobs", "TMIN_tobs", "TMAX_tobs", "TOBS_tobs"), filler = NA_character_)
+      add_column_if_does_not_exist(
+        (.),
+        colname = c("PRCP_tobs", "TMIN_tobs", "TMAX_tobs", "TOBS_tobs"),
+        filler = NA_character_)
     } %>%
     # (optionally) Rewrite the measurement and quality codes as proper notes
     {
