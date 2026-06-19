@@ -104,7 +104,8 @@ clean_raw_ghcnd_to_standard <- function(raw_ghcnd_df, select_SOD_cols = TRUE, be
     dplyr::mutate(
       dplyr::across(
         .cols = tidyselect::any_of(c("TMIN", "TMAX", "PRCP", "TOBS", "TAVE")),
-        .fns = \(x) x/10)
+        .fns = \(x) {dplyr::if_else(x %in% c("-9999"), NA_real_, as.numeric(x)/10)}
+        )
       ) %>%
     dplyr::mutate(
       dplyr::across(
