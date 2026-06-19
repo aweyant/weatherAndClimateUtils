@@ -386,7 +386,8 @@ GHCNd_wide_format_to_standard_summary_of_day <- function(wide_fwf_in, SOD_csv_ou
 
   wide_df <- readr::read_fwf(
     file = wide_fwf_in,
-    col_positions = readr::fwf_widths(widths = widths_v, col_names = cols_v)
+    col_positions = readr::fwf_widths(widths = widths_v, col_names = cols_v),
+    paste0(rep("c", length.out = length(cols_v)), collapse = "")
   )
 
   elements_tbl <- wide_df %>%
